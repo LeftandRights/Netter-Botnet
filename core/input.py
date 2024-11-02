@@ -1,12 +1,11 @@
 import typing, importlib, os
 
 if typing.TYPE_CHECKING:
-    from logger import C2Server
-
+    from logger import Logging
 
 class InputHandler:
-    def __init__(self, _C2Server: "C2Server") -> None:
-        self.C2Server: C2Server = _C2Server
+    def __init__(self, _logging: "Logging") -> None:
+        self.logging: "Logging" = _logging
 
         # {
         #     ["command name", "command aliases"] = {
@@ -31,8 +30,8 @@ class InputHandler:
                 self.commandList[name.lower()] = {
                     "description": getattr(module, "__description__", "Not specified"),
                     "executor": getattr(module, "execute",
-                        lambda: self.C2Server.console_log(
-                            f"Command executor not found for {filename}",
+                        lambda *_: self.logging.console_log(
+                            f"Command executor function is not found for {'\\'.join(getattr(module, '__file__').split('\\')[-2:])}",
                             level = "ERROR",
                         ),
                     ),
@@ -47,10 +46,10 @@ class InputHandler:
         if userCommand in self.commandList.keys():
             try:
                 if (' ' not in user_input):
-                    self.commandList[userCommand]["executor"](self.C2Server.netServer)
+                    self.commandList[userCommand]["executor"](self.logging.netServer)
 
                 else:
-                    self.commandList[userCommand]["executor"](self.C2Server.netServer, *user_input.split()[1:])
+                    self.commandList[userCommand]["executor"](self.logging.netServer, *user_input.split()[1:])
 
             except Exception as e:
                 self.on_command_error(userCommand, str(e))
@@ -59,8 +58,8 @@ class InputHandler:
             self.on_command_not_found(userCommand)
 
     def on_command_not_found(self, command: str) -> None:
-        self.C2Server.console_log('The command "%s" not found' % command, level = "ERROR")
+        self.logging.console_log('The command "%s" not found' % command, level = "ERROR")
 
     def on_command_error(self, commandName: str, errorMessages: str) -> None:
-        self.C2Server.console_log('An error occurred while executing the command "%s"' % commandName, level = 'ERROR')
-        self.C2Server.console_log('Error messages: ' + errorMessages, level = 'ERROR')
+        self.logging.console_log('An error occurred while executing the command "%s"' % commandName, level = 'ERROR')
+        self.logging.console_log('  L Error messages: ' + errorMessages, level = 'PLAIN')

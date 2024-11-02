@@ -28,8 +28,8 @@ def main():
 
     netterServer: NetterServer = NetterServer(ngrokConfig = ngrokConfig)
 
-    netterServer.rentryUrlName = 'netter_botnet'
-    netterServer.rentryEditCode = '924450817Gg'
+    netterServer.rentryUrlName = 'netter_testing'
+    netterServer.rentryEditCode = 'netter_testing'
 
     # netterServer.startNgrokTunnel(useRentry = True)
     netterServer.listen()

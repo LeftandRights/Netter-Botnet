@@ -23,7 +23,7 @@ class Connect(socket.socket, ClientWrapper):
             self.connect((self.serverHost, int(self.serverPort)))
 
             logger.info("Conntected to server -> %s:%s" % (self.serverHost, self.serverPort))
-            self.send_(packetType = PacketType.RAW_PACKET, data=pickle.dumps(self.deviceInformation))
+            self.send_(packetType = PacketType.UNKNOWN, data = pickle.dumps(self.deviceInformation))
 
             while self.connected:
                 try:

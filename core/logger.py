@@ -6,14 +6,13 @@ from typing import Optional, Literal, TYPE_CHECKING
 from contextlib import suppress
 from os import _exit
 
-from .enums import PacketType
 from .input import InputHandler
 
 if TYPE_CHECKING:
     from curses import _CursesWindow
     from .http import NetterServer, NetterClient
 
-class C2Server:
+class Logging:
     logs: list[tuple[str, str, str]] = list()
     color: dict[str, int] = {
         1: curses.COLOR_GREEN,
@@ -60,8 +59,8 @@ class C2Server:
     def console_log(self, message: str, level: Optional[Literal["INFO", "WARNING", "ERROR", "PLAIN"]] = "INFO") -> None:
         self.logs.append((datetime.now().strftime("%Y-%m-%d %H:%M:%S"), level, message))
 
-        if len(self.logs) > (self.height - 3):
-            self.logs = self.logs[1:]
+        # if len(self.logs) > (self.height - 3):
+        #     self.logs = self.logs[1:]
 
         self.display_logs()
 
@@ -70,7 +69,7 @@ class C2Server:
         self.stdscr.clear()
         self.logWindow.clear()
 
-        for idx, (timestamp, _level, msg) in enumerate(self.logs[-(self.height - 1) :]):
+        for idx, (timestamp, _level, msg) in enumerate(self.logs if len(self.logs) < self.height - 3 else self.logs[len(self.logs) - (self.height - 3):]):
             with suppress(Exception):
                 if (_level != "PLAIN"):
                     self.logWindow.attron(curses.color_pair(1))

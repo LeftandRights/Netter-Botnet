@@ -14,28 +14,34 @@ class BackendPacket(IntEnum):
     RUN_SERVER_COMMAND = 0x30
     CLIENT_RESPONSE = 0x50
 
+    SERVER_STATUS = 0x90
+
 def create_socketObject() -> socket.socket:
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect(('127.0.0.1', 2211))
     return s
 
 def send_packet(packetType: BackendPacket, data: str | bytes) -> bytes:
-    if isinstance(data, str):
-        data = data.encode('utf-8')
+    try:
+        if isinstance(data, str):
+            data = data.encode('utf-8')
 
-    socketObject: socket.socket = create_socketObject()
+        socketObject: socket.socket = create_socketObject()
 
-    packetLength = len(data).to_bytes(4, 'big')
-    packetType = packetType.to_bytes(2, 'little')
+        packetLength = len(data).to_bytes(4, 'big')
+        packetType = packetType.to_bytes(2, 'little')
 
-    socketObject.send(packetLength)
-    socketObject.send(packetType)
-    socketObject.send(data)
+        socketObject.send(packetLength)
+        socketObject.send(packetType)
+        socketObject.send(data)
 
-    response: bytes = socketObject.recv(2048)
-    socketObject.close()
+        response: bytes = socketObject.recv(2048)
+        socketObject.close()
 
-    return response
+        return response
+
+    except ConnectionRefusedError:
+        return b'1'
 
 def variable(name, default_value: type = list, value: Optional[VALUE] = None) -> VALUE:
     print(globals().get(name))

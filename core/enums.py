@@ -13,9 +13,15 @@ class RentryType(IntEnum):
     DELETE = 2
 
 class PacketType(IntEnum):
-    CONSOLE_INFO = 0x12
-    CONSOLE_WARNING = 0x32
-    CONSOLE_ERROR = 0x22
+    CONSOLE_INFO = 0x01
+    CONSOLE_WARNING = 0x02
+    CONSOLE_ERROR = 0x03
+
+    SAVE_AS_CACHE = 0x20
+    LOAD_FROM_CACHE = 0x21
+
+    COMMAND = 0x50
+    COMMAND_RESPONSE = 0x51
 
     UNKNOWN = 0x99
 
@@ -27,9 +33,9 @@ class BackendPacket(IntEnum):
     GET_CLIENT_INFO = 0x12
 
     RUN_SERVER_COMMAND = 0x30
-    SEND_CLIENT_PACKET = 0x40
-
     CLIENT_RESPONSE = 0x50
+
+    SERVER_STATUS = 0x90
 
 @dataclass
 class NetterClient:
@@ -50,6 +56,10 @@ class RentryResponse:
     text: str
     url: str
 
+@dataclass
+class ClientResponse:
+    packetType: PacketType
+    data: bytes | int
 
 @dataclass
 class RentryContent:

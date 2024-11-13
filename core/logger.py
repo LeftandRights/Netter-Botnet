@@ -7,6 +7,7 @@ from contextlib import suppress
 from os import _exit
 
 from .input import InputHandler
+from .enums import PacketType
 
 if TYPE_CHECKING:
     from curses import _CursesWindow
@@ -22,6 +23,7 @@ class Logging:
     }
 
     def __init__(self, netServer: "NetterServer") -> None:
+
         curses.wrapper(self._initialize)
         self.netServer: "NetterServer" = netServer
         self.inputHandler = InputHandler(self)
@@ -45,7 +47,11 @@ class Logging:
             1, self.width, self.height - 1, 0
         )
 
-    def input(self, prompt: Optional[str] = "test > ") -> str:
+    def input(self, prompt: Optional[str] = " > ") -> str:
+
+        if (self.netServer.selectedClient):
+            prompt = self.netServer.selectedClient.UUID + ' > '
+
         self.inputWindow.clear()
         self.inputWindow.addstr(0, 0, prompt)
         self.inputWindow.refresh()
@@ -100,6 +106,10 @@ class Logging:
 
         while True:
             user_input = self.input()
+
+            if (user_input.startswith('msg ')):
+                for client in self.netServer.connectionList:
+                    client.socket_.send_(PacketType.UNKNOWN, user_input.encode('UTF-8'))
 
             if (user_input.lower() == 'exit'):
                 self.stdscr.clear()

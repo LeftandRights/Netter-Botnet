@@ -1,18 +1,20 @@
-import socket, pickle, time
+import socket, pickle
 from loguru import logger
 
 from ..http import ClientWrapper
 from ..enums import PacketType
+from .handler import serverHandler
 
-
-class Connect(socket.socket, ClientWrapper):
+class Connect(socket.socket, ClientWrapper, serverHandler):
     def __init__(self, serverAddress: str, deviceInformation: dict) -> None:
         socket.socket.__init__(self, socket.AF_INET, socket.SOCK_STREAM)
         ClientWrapper.__init__(self, self)
+        serverHandler.__init__(self, self)
 
         self.serverHost, self.serverPort = serverAddress.split(":")
         self.deviceInformation: dict = deviceInformation
         self.connected: bool = True
+        self._socketInstance.send
 
     def disconnect(self) -> None:
         logger.error("Connection reset by server, reconnecting..")
@@ -27,12 +29,11 @@ class Connect(socket.socket, ClientWrapper):
 
             while self.connected:
                 try:
-                    data_buffer: bytes = self.receive()
-
-                    if not data_buffer:
+                    if not (data_buffer := self.receive()):
                         break
 
-                    print(data_buffer)
+                    logger.info(f'New incoming packet[{data_buffer.packetType}]: {data_buffer.data.decode()}')
+                    self.handle(data_buffer.data)
 
                 except ConnectionResetError:
                     break

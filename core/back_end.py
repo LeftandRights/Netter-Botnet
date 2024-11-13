@@ -25,7 +25,10 @@ class backEnd_server(threading.Thread):
 
         data: bytes = _client.recv(packetLength).decode('UTF-8')
 
-        if (packet_type == BackendPacket.GET_CLIENT_ONLINE):
+        if (packet_type == BackendPacket.SERVER_STATUS):
+            _client.send(b'0')
+
+        elif (packet_type == BackendPacket.GET_CLIENT_ONLINE):
             if (not self.netServer.connectionList):
                 _client.send(b'[]'); return
 
@@ -53,11 +56,10 @@ class backEnd_server(threading.Thread):
                 ][0]
             ]
 
-            clientData = {}
-
-            for _object in fields(client):
-                if (_object.name == "socket_"): continue
-                clientData[_object.name] = getattr(client, _object.name)
+            clientData = {
+                _object.name: getattr(client, _object.name) for _object in fields(client)
+                if (_object.name != "socket_")
+            }
 
             _client.sendall(json.dumps(clientData).encode('UTF-8'))
 

@@ -9,11 +9,10 @@ __aliases__ = [
 ]
 
 __description__ = 'List connected clients.'
-__extra__ = None
 
 def execute(netServer: "NetterServer", *args) -> None: # Args is a must to handle in case the user gives extra unneccesarry argument
 
-    if not ( _connectionList := netServer.connectionList):
+    if not ( _connectionList := netServer.connection_list):
         netServer.console_log("No clients connected.")
         return
 

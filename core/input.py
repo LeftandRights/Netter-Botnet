@@ -31,7 +31,10 @@ class InputHandler:
                     "description": getattr(module, "__description__", "Not specified"),
                     "executor": getattr(module, "execute",
                         lambda *_: self.logging.console_log(
-                            f"Command executor function is not found for {'\\'.join(getattr(module, '__file__').split('\\')[-2:])}",
+                            f"Command executor function is not found for {
+                                '\\'.join(getattr(module, '__file__').split('\\')[-2:])
+                            }",
+
                             level = "ERROR",
                         ),
                     ),

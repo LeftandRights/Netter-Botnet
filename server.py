@@ -1,7 +1,6 @@
 from core.rentry import Rentry
 from core.http import NetterServer
 from pyngrok import ngrok
-from os import _exit
 
 import json
 

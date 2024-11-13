@@ -1,5 +1,7 @@
 import threading, typing
 
+from .enums import PacketType
+
 if typing.TYPE_CHECKING:
     from .http import ClientWrapper, NetterServer
     from .enums import NetterClient
@@ -23,7 +25,7 @@ class ClientHandler(threading.Thread):
 
         self.isConnected = False
         self.socketClient.socket.close()
-        self.netServer.connectionList.remove(self.netClient)
+        self.netServer.remove(self.netClient)
 
     def run(self) -> None:
         self.netServer.console_log(
@@ -32,11 +34,13 @@ class ClientHandler(threading.Thread):
         )
 
         while self.isConnected:
-            if (not (data := self.socketClient.receive())) or isinstance(data, int):
+            if (not (response := self.socketClient.receive())) or isinstance(response.data, int):
                 # If the `receive()` function retruns an integer, it means the packet that
                 # are being sent is involving with console stdout, no need to handle.
 
-                if not data:
+                if not response:
                     self.disconnect()
 
-            self.netServer.console_log(len(str(data.decode())))
+            if (response.packetType == PacketType.COMMAND_RESPONSE and self.netClient.socket_.responseFunction):
+                self.netClient.socket_.responseFunction(self.netServer, self.netClient, response)
+                self.netClient.socket_.responseFunction = None

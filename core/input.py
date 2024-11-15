@@ -38,6 +38,8 @@ class InputHandler:
                             level = "ERROR",
                         ),
                     ),
+
+                    "on_server_receive": getattr(module, "on_server_receive", None)
                 }
 
     def handle(self, user_input: str) -> None:
@@ -48,11 +50,13 @@ class InputHandler:
 
         if userCommand in self.commandList.keys():
             try:
-                if (' ' not in user_input):
-                    self.commandList[userCommand]["executor"](self.logging.netServer)
+                returnValue: bool = self.commandList[userCommand]["executor"](self.logging.netServer) if ' ' not in user_input \
+                    else self.commandList[userCommand]["executor"](self.logging.netServer, *user_input.split()[1:])
 
-                else:
-                    self.commandList[userCommand]["executor"](self.logging.netServer, *user_input.split()[1:])
+                if returnValue is True and (on_server_receive := self.commandList[userCommand]['on_server_receive']) is not None:
+                    self.logging.console_log('yooo: ' + repr(on_server_receive))
+
+                    self.logging.netServer.selectedClient.socket_.responseFunction = on_server_receive
 
             except Exception as e:
                 self.on_command_error(userCommand, str(e))

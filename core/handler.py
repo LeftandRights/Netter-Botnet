@@ -34,15 +34,16 @@ class ClientHandler(threading.Thread):
         )
 
         while self.isConnected:
-            if (not (response := self.socketClient.receive())) or isinstance(response.data, int):
+            if (not (response := self.socketClient.receive())):
                 # If the `receive()` function retruns an integer, it means the packet that
                 # are being sent is involving with console stdout, no need to handle.
 
                 if not response:
                     self.disconnect()
 
-            if (response.packetType == PacketType.COMMAND_RESPONSE and self.netClient.socket_.responseFunction):
-                self.netServer.console_log(repr(self.netClient.socket_.responseFunction))
+            if (isinstance(response, int)):
+                continue
 
+            if (response.packetType == PacketType.COMMAND_RESPONSE and self.netClient.socket_.responseFunction):
                 self.netClient.socket_.responseFunction(self.netServer, self.netClient, response)
                 self.netClient.socket_.responseFunction = None

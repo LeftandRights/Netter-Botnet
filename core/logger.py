@@ -112,10 +112,15 @@ class Logging:
                     client.socket_.send_(PacketType.UNKNOWN, user_input.encode('UTF-8'))
 
             if (user_input.lower() == 'exit'):
-                self.stdscr.clear()
-                self.stdscr.refresh()
-                curses.endwin()
-                _exit(0)
+                if not self.netServer.selectedClient:
+                    self.stdscr.clear()
+                    self.stdscr.refresh()
+                    curses.endwin()
+                    _exit(0)
+
+                self.netServer.selectedClient = None
+                self.netServer.console_log('Type `exit` once again to exit.')
+                continue
 
             if (user_input.lower() in ['clear', 'cls']):
                 self.logs = list()

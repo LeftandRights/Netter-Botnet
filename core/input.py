@@ -1,5 +1,7 @@
 import typing, importlib, os
 
+from .enums import NetterClient
+
 if typing.TYPE_CHECKING:
     from logger import Logging
 
@@ -49,17 +51,24 @@ class InputHandler:
             return
 
         if userCommand in self.commandList.keys():
+
+                # returnValue: bool = self.commandList[userCommand]["executor"](self.logging.netServer) if ' ' not in user_input \
+                #     else self.commandList[userCommand]["executor"](self.logging.netServer, *user_input.split()[1:])
+
             try:
-                returnValue: bool = self.commandList[userCommand]["executor"](self.logging.netServer) if ' ' not in user_input \
-                    else self.commandList[userCommand]["executor"](self.logging.netServer, *user_input.split()[1:])
+                if len(user_input.split()) == 1:
+                    raise TypeError
 
-                if returnValue is True and (on_server_receive := self.commandList[userCommand]['on_server_receive']) is not None:
-                    self.logging.console_log('yooo: ' + repr(on_server_receive))
+                returnValue: NetterClient =  self.commandList[userCommand]["executor"](
+                    self.logging.netServer, *user_input.split()[1:]
+                )
 
-                    self.logging.netServer.selectedClient.socket_.responseFunction = on_server_receive
+            except TypeError:
+                returnValue: NetterClient = self.commandList[userCommand]["executor"](self.logging.netServer)
 
-            except Exception as e:
-                self.on_command_error(userCommand, str(e))
+            if isinstance(returnValue, NetterClient) and (on_server_receive := self.commandList[userCommand]['on_server_receive']):
+                returnValue.socket_.responseFunction = on_server_receive
+
 
         else:
             self.on_command_not_found(userCommand)

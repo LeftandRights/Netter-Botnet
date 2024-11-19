@@ -12,7 +12,7 @@ def execute(netServer: "NetterServer", *args) -> None:
     moduleList = {
         getattr((module := importlib.import_module("core.command." + fileName[:-3])), "__aliases__")[0].lower(): {
             "aliases": getattr(module, "__aliases__"),
-            "description": getattr(module, "__description__")
+            "description": getattr(module, "__description__", "Not Specified")
         }
             for fileName in fileList
     }

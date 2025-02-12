@@ -5,6 +5,7 @@ from ..http import ClientWrapper
 from ..enums import PacketType
 from .handler import serverHandler
 
+
 class Connect(socket.socket, ClientWrapper, serverHandler):
     def __init__(self, serverAddress: str, deviceInformation: dict) -> None:
         socket.socket.__init__(self, socket.AF_INET, socket.SOCK_STREAM)
@@ -25,14 +26,14 @@ class Connect(socket.socket, ClientWrapper, serverHandler):
             self.connect((self.serverHost, int(self.serverPort)))
 
             logger.info("Conntected to server -> %s:%s" % (self.serverHost, self.serverPort))
-            self.send_(packetType = PacketType.UNKNOWN, data = pickle.dumps(self.deviceInformation))
+            self.send_(packetType=PacketType.UNKNOWN, data=pickle.dumps(self.deviceInformation))
 
             while self.connected:
                 try:
                     if not (data_buffer := self.receive()):
                         break
 
-                    logger.info(f'New incoming packet[{data_buffer.packetType}]: {data_buffer.data.decode()}')
+                    logger.info(f"New incoming packet[{data_buffer.packetType}]: {data_buffer.data.decode()}")
                     self.handle(data_buffer.data)
 
                 except ConnectionResetError:

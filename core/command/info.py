@@ -12,7 +12,7 @@ class infoCommand(CommandBase):
     __description__ = "Get all information about the client"
     __extra__ = ""
 
-    def execute(netServer: "NetterServer", *args) -> None:
+    def execute(self, netServer: "NetterServer", *args) -> None:
         if not args and not netServer.selectedClient:
             # netServer.console_log('No client selected', level = 'ERROR')
             netServer.inputHandler.handle("help info")

@@ -10,7 +10,7 @@ class botCommand(CommandBase):
     __aliases__ = ["bot", "bots", "client", "list"]
     __description__ = "List connected clients."
 
-    def execute(netServer: "NetterServer") -> None:
+    def execute(self, netServer: "NetterServer") -> None:
 
         if not (_connectionList := netServer.connection_list):
             netServer.console_log("No clients connected.")

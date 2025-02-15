@@ -14,7 +14,7 @@ class runCommand(CommandBase):
     __description__ = "Command used to run a command-prompt command, requires a client to be selected in order to execute this command."
     __extra__ = "Usage examples: `run dir`"
 
-    def execute(netServer: "NetterServer", *args) -> bool:
+    def execute(self, netServer: "NetterServer", *args) -> bool:
         if not args:
             netServer.inputHandler.handle("help run")
             return
@@ -28,7 +28,7 @@ class runCommand(CommandBase):
 
         return netServer.selectedClient
 
-    def on_server_receive(netServer: "NetterServer", client: "NetterClient", packet: "ClientResponse"):
+    def on_server_receive(self, netServer: "NetterServer", client: "NetterClient", packet: "ClientResponse"):
         output: list[str] = packet.data.decode("UTF-8").split("\n")
 
         netServer.console_log("Command execution completed, output: ", level="INFO")
@@ -36,7 +36,7 @@ class runCommand(CommandBase):
         for text in output:
             netServer.console_log(text, level="PLAIN")
 
-    def on_client_receive(serverHandler: "Connect", *args):
+    def on_client_receive(self, serverHandler: "Connect", *args):
         import concurrent.futures, subprocess
 
         if not args:

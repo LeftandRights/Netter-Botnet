@@ -42,4 +42,3 @@ class ClientHandler(threading.Thread):
 
             if response.packetType == PacketType.COMMAND_RESPONSE and self.netClient.socket_.responseFunction:
                 self.netClient.socket_.responseFunction(self.netServer, self.netClient, response)
-                self.netClient.socket_.responseFunction = None

@@ -1,6 +1,5 @@
-import typing, importlib, os
-
-from .enums import NetterClient
+import typing
+from .commands import loadCommand
 
 if typing.TYPE_CHECKING:
     from logger import Logging
@@ -10,62 +9,23 @@ class InputHandler:
     def __init__(self, _logging: "Logging") -> None:
         self.logging: "Logging" = _logging
 
-        # {
-        #     ["command name", "command aliases"] = {
-        #         "description": "description",
-        #         "executor": "callable function"
-        #     }
-        # }
-
-        self.commandList: dict[list[str], dict[str, str | callable]] = {}
-
-        for filename in os.listdir("core/command"):
-            if not (filename.endswith(".py")):
-                continue
-
-            module = importlib.import_module(f"core.command.{filename[:-3]}")
-            commandName = getattr(module, "__aliases__", filename[:-3])
-
-            if not isinstance(commandName, list):
-                continue
-
-            for name in commandName:
-                self.commandList[name.lower()] = {
-                    "description": getattr(module, "__description__", "Not specified"),
-                    "executor": getattr(
-                        module,
-                        "execute",
-                        lambda *_: self.logging.console_log(
-                            f"Command executor function is not found for {
-                                '\\'.join(getattr(module, '__file__').split('\\')[-2:])
-                            }",
-                            level="ERROR",
-                        ),
-                    ),
-                    "on_server_receive": getattr(module, "on_server_receive", None),
-                }
-
     def handle(self, user_input: str) -> None:
-        userCommand: str = user_input.split(" ")[0].lower()
-
-        if not userCommand:
+        if not (userCommand := user_input.split(" ")[0].lower()):
             return
 
-        if userCommand in self.commandList.keys():
-            try:
-                if len(user_input.split()) == 1:
-                    raise TypeError
+        for command in loadCommand():
+            if userCommand not in getattr(command, "__aliases__", []):
+                continue
 
-                returnValue: NetterClient = self.commandList[userCommand]["executor"](self.logging.netServer, *user_input.split()[1:])
-
-            except TypeError:
-                returnValue: NetterClient = self.commandList[userCommand]["executor"](self.logging.netServer)
-
-            if isinstance(returnValue, NetterClient) and (on_server_receive := self.commandList[userCommand]["on_server_receive"]):
-                returnValue.socket_.responseFunction = on_server_receive
+            returnValue = (calledCommand := command()).execute(self.logging.netServer, *(user_input.split()[1:] or []))
+            break
 
         else:
             self.on_command_not_found(userCommand)
+            return
+
+        if calledCommand._clientInteraction and returnValue is not None:
+            returnValue.socket_.responseFunction = calledCommand.on_server_receive
 
     def on_command_not_found(self, command: str) -> None:
         self.logging.console_log('The command "%s" not found' % command, level="ERROR")

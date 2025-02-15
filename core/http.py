@@ -174,13 +174,3 @@ class NetterServer(Logging, ConnectionBucket):
 
         except Exception as e:
             self.console_log(str(e))
-
-    # def wait_for_incoming_packet(self, clientID: str, on_received: callable) -> None:
-    #     if (client := self.get(UUID = clientID)) is None:
-    #         self.console_log('Server waits for incoming requests from an invalid client, aborted.', level = "WARNING")
-    #         return
-
-    #     packet: ClientResponse = client.socket_.receive()
-
-    #     if (packet.data):
-    #         on_received(self, client, packet.data)

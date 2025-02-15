@@ -1,65 +1,61 @@
 from typing import TYPE_CHECKING
 from ..enums import PacketType
 
+from ..commands import CommandBase
+
 if TYPE_CHECKING:
     from ..http import NetterServer, NetterClient
     from ..enums import ClientResponse
     from ..client import Connect
 
-__aliases__ = ['run', 'exec']
-__description__ = 'Command used to run a command-prompt command, requires a client to be selected in order to execute this command.'
-__extra__ = 'Usage examples: `run dir`'
 
-def execute(netServer: "NetterServer", *args) -> bool:
-    if not args:
-        netServer.inputHandler.handle('help run')
-        return
+class runCommand(CommandBase):
+    __aliases__ = ["run", "exec"]
+    __description__ = "Command used to run a command-prompt command, requires a client to be selected in order to execute this command."
+    __extra__ = "Usage examples: `run dir`"
 
-    if not netServer.selectedClient:
-        netServer.console_log('No client is selected', level = 'ERROR')
-        netServer.inputHandler.handle('help select')
-        return
+    def execute(netServer: "NetterServer", *args) -> bool:
+        if not args:
+            netServer.inputHandler.handle("help run")
+            return
 
-    netServer.selectedClient.socket_.send_(
-        packetType = PacketType.COMMAND,
-        data = 'exec ' + ' '.join(args)
-    )
+        if not netServer.selectedClient:
+            netServer.console_log("No client is selected", level="ERROR")
+            netServer.inputHandler.handle("help select")
+            return
 
-    return netServer.selectedClient
+        netServer.selectedClient.socket_.send_(packetType=PacketType.COMMAND, data="exec " + " ".join(args))
 
-def on_server_receive(netServer: "NetterServer", client: "NetterClient", packet: "ClientResponse"):
-    output: list[str] = packet.data.decode('UTF-8').split('\n')
+        return netServer.selectedClient
 
-    netServer.console_log('Command execution completed, output: ', level = 'INFO')
+    def on_server_receive(netServer: "NetterServer", client: "NetterClient", packet: "ClientResponse"):
+        output: list[str] = packet.data.decode("UTF-8").split("\n")
 
-    for text in output:
-        netServer.console_log(text, level = 'PLAIN')
+        netServer.console_log("Command execution completed, output: ", level="INFO")
 
-def on_client_receive(serverHandler: "Connect", *args):
-    import concurrent.futures, subprocess
+        for text in output:
+            netServer.console_log(text, level="PLAIN")
 
-    if (not args):
-        serverHandler.send_(PacketType.CONSOLE_ERROR, repr(serverHandler))
-        serverHandler.send_(PacketType.CONSOLE_ERROR, 'Invalid usage of command: ' + repr(args))
-        return
+    def on_client_receive(serverHandler: "Connect", *args):
+        import concurrent.futures, subprocess
 
-    def run() -> str:
-        output = subprocess.run(' '.join(args),
-            stdout = subprocess.PIPE,
-            stderr = subprocess.PIPE,
-            shell = True,
-            text = True
-        )
+        if not args:
+            serverHandler.send_(PacketType.CONSOLE_ERROR, repr(serverHandler))
+            serverHandler.send_(PacketType.CONSOLE_ERROR, "Invalid usage of command: " + repr(args))
+            return
 
-        return output.stderr if output.stderr else output.stdout
+        def run() -> str:
+            output = subprocess.run(" ".join(args), stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, text=True)
 
-    executor = concurrent.futures.ThreadPoolExecutor()
-    future = executor.submit(run)
+            return output.stderr if output.stderr else output.stdout
 
-    try:
-        result = future.result(timeout = 8)
-        return result
+        executor = concurrent.futures.ThreadPoolExecutor()
+        future = executor.submit(run)
 
-    except concurrent.futures.TimeoutError:
-        serverHandler.send_(PacketType.CONSOLE_ERROR, 'Command execution timed out')
-        return
+        try:
+            result = future.result(timeout=8)
+            return result
+
+        except concurrent.futures.TimeoutError:
+            serverHandler.send_(PacketType.CONSOLE_ERROR, "Command execution timed out")
+            return

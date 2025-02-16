@@ -13,17 +13,12 @@ if TYPE_CHECKING:
     from curses import _CursesWindow
     from .http import NetterServer, NetterClient
 
+
 class Logging:
     logs: list[tuple[str, str, str]] = list()
-    color: dict[str, int] = {
-        1: curses.COLOR_GREEN,
-        2: curses.COLOR_RED,
-        3: curses.COLOR_YELLOW,
-        4: curses.COLOR_CYAN
-    }
+    color: dict[str, int] = {1: curses.COLOR_GREEN, 2: curses.COLOR_RED, 3: curses.COLOR_YELLOW, 4: curses.COLOR_CYAN}
 
     def __init__(self, netServer: "NetterServer") -> None:
-
         curses.wrapper(self._initialize)
         self.netServer: "NetterServer" = netServer
         self.inputHandler = InputHandler(self)
@@ -36,21 +31,19 @@ class Logging:
             for key, value in self.color.items():
                 curses.init_pair(key, value, curses.COLOR_BLACK)
 
-        threading.Thread(target = self.userInput_handler).start()
+        threading.Thread(target=self.userInput_handler).start()
 
     def _initialize(self, stdsrc: "_CursesWindow") -> None:
         self.stdscr: "_CursesWindow" = stdsrc
         self.height, self.width = self.stdscr.getmaxyx()
 
         self.logWindow: _CursesWindow = curses.newwin(self.height - 3, self.width, 0, 0)
-        self.inputWindow: _CursesWindow = curses.newwin(
-            1, self.width, self.height - 1, 0
-        )
+        self.inputWindow: _CursesWindow = curses.newwin(1, self.width, self.height - 1, 0)
 
     def input(self, prompt: Optional[str] = " > ") -> str:
 
-        if (self.netServer.selectedClient):
-            prompt = self.netServer.selectedClient.UUID + ' > '
+        if self.netServer.selectedClient:
+            prompt = self.netServer.selectedClient.UUID + " > "
 
         self.inputWindow.clear()
         self.inputWindow.addstr(0, 0, prompt)
@@ -75,9 +68,11 @@ class Logging:
         self.stdscr.clear()
         self.logWindow.clear()
 
-        for idx, (timestamp, _level, msg) in enumerate(self.logs if len(self.logs) < self.height - 3 else self.logs[len(self.logs) - (self.height - 3):]):
+        for idx, (timestamp, _level, msg) in enumerate(
+            self.logs if len(self.logs) < self.height - 3 else self.logs[len(self.logs) - (self.height - 3) :]
+        ):
             with suppress(Exception):
-                if (_level != "PLAIN"):
+                if _level != "PLAIN":
                     self.logWindow.attron(curses.color_pair(1))
                     self.logWindow.addstr(idx, 0, timestamp)
                     self.logWindow.attroff(curses.color_pair(1))
@@ -107,11 +102,11 @@ class Logging:
         while True:
             user_input = self.input()
 
-            if (user_input.startswith('msg ')):
+            if user_input.startswith("msg "):
                 for client in self.netServer.connectionList:
-                    client.socket_.send_(PacketType.UNKNOWN, user_input.encode('UTF-8'))
+                    client.socket_.send_(PacketType.UNKNOWN, user_input.encode("UTF-8"))
 
-            if (user_input.lower() == 'exit'):
+            if user_input.lower() == "exit":
                 if not self.netServer.selectedClient:
                     self.stdscr.clear()
                     self.stdscr.refresh()
@@ -119,14 +114,14 @@ class Logging:
                     _exit(0)
 
                 self.netServer.selectedClient = None
-                self.netServer.console_log('Type `exit` once again to exit.')
+                self.netServer.console_log("Type `exit` once again to exit.")
                 continue
 
-            if (user_input.lower() in ['clear', 'cls']):
+            if user_input.lower() in ["clear", "cls"]:
                 self.logs = list()
                 self.display_logs()
-                self.console_log('All log messages has been cleared')
+                self.console_log("All log messages has been cleared")
                 continue
 
-            if (user_input):
-                self.inputHandler.handle(user_input = user_input)
+            if user_input:
+                self.inputHandler.handle(user_input=user_input)

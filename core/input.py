@@ -31,5 +31,6 @@ class InputHandler:
         self.logging.console_log('The command "%s" not found' % command, level="ERROR")
 
     def on_command_error(self, commandName: str, errorMessages: str) -> None:
+
         self.logging.console_log('An error occurred while executing the command "%s"' % commandName, level="ERROR")
         self.logging.console_log("  L Error messages: " + errorMessages, level="PLAIN")

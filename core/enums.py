@@ -7,23 +7,24 @@ from dataclasses import dataclass
 if typing.TYPE_CHECKING:
     from .http import ClientWrapper
 
+
 class RentryType(IntEnum):
     CREATE_NEW = 0
     EDIT_EXISTING = 1
     DELETE = 2
+
 
 class PacketType(IntEnum):
     CONSOLE_INFO = 0x01
     CONSOLE_WARNING = 0x02
     CONSOLE_ERROR = 0x03
 
-    SAVE_AS_CACHE = 0x20
-    LOAD_FROM_CACHE = 0x21
-
     COMMAND = 0x50
     COMMAND_RESPONSE = 0x51
 
     UNKNOWN = 0x99
+    DEVICE_INFORMATION = 0x100
+
 
 class BackendPacket(IntEnum):
     BACK_END = 0x01
@@ -37,6 +38,7 @@ class BackendPacket(IntEnum):
 
     SERVER_STATUS = 0x90
 
+
 @dataclass
 class NetterClient:
     socket_: "ClientWrapper"
@@ -45,6 +47,7 @@ class NetterClient:
     username: str
     publicAddress: str
     privateAddress: str
+
 
 @dataclass
 class RentryResponse:
@@ -56,10 +59,12 @@ class RentryResponse:
     text: str
     url: str
 
+
 @dataclass
 class ClientResponse:
     packetType: PacketType
     data: bytes | int
+
 
 @dataclass
 class RentryContent:

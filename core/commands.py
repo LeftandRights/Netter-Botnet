@@ -17,6 +17,13 @@ class CommandBase(ABC):
     __description__: str = "No description provided."
     __extra__: str = ""
 
+    _instances = {}
+
+    def __new__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super().__new__(cls)
+        return cls._instances[cls]
+
     @abstractmethod
     def execute(self, netServer: "NetterServer") -> None:
         pass

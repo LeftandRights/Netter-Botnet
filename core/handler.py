@@ -32,7 +32,7 @@ class ClientHandler(threading.Thread):
         self.netServer.console_log("%s (%s) just hopped onto the server!" % (self.netClient.publicAddress, self.netClient.username))
 
         while self.isConnected:
-            if (response := self.socketClient.receive()).data is None:
+            if not isinstance(response := self.socketClient.receive(), int) and response.data is None:
                 self.disconnect()
 
             if isinstance(response, int):
@@ -41,4 +41,5 @@ class ClientHandler(threading.Thread):
                 continue
 
             if response.packetType == PacketType.COMMAND_RESPONSE and self.netClient.socket_.responseFunction:
+                # threading.Thread(target=self.netClient.socket_.responseFunction, args=(self.netServer, self.netClient, response)).start()
                 self.netClient.socket_.responseFunction(self.netServer, self.netClient, response)

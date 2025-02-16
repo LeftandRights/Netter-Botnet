@@ -15,7 +15,6 @@ class Connect(socket.socket, ClientWrapper, serverHandler):
         self.serverHost, self.serverPort = serverAddress.split(":")
         self.deviceInformation: dict = deviceInformation
         self.connected: bool = True
-        self._socketInstance.send
 
     def disconnect(self) -> None:
         logger.error("Connection reset by server, reconnecting..")
@@ -26,14 +25,13 @@ class Connect(socket.socket, ClientWrapper, serverHandler):
             self.connect((self.serverHost, int(self.serverPort)))
 
             logger.info("Conntected to server -> %s:%s" % (self.serverHost, self.serverPort))
-            self.send_(packetType=PacketType.UNKNOWN, data=pickle.dumps(self.deviceInformation))
+            self.send_(packetType=PacketType.DEVICE_INFORMATION, data=pickle.dumps(self.deviceInformation))
 
             while self.connected:
                 try:
-                    if not (data_buffer := self.receive()):
+                    if (data_buffer := self.receive()).data is None:
                         break
 
-                    logger.info(f"New incoming packet[{data_buffer.packetType}]: {data_buffer.data.decode()}")
                     self.handle(data_buffer.data)
 
                 except ConnectionResetError:

@@ -25,7 +25,6 @@ class runCommand(CommandBase):
             return
 
         netServer.selectedClient.socket_.send_(packetType=PacketType.COMMAND, data="exec " + " ".join(args))
-
         return netServer.selectedClient
 
     def on_server_receive(self, netServer: "NetterServer", client: "NetterClient", packet: "ClientResponse"):

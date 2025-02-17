@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 class CommandBase(ABC):
     _clientInteraction: bool = False
     _generatorFunction: bool = False
-    _requiredArguments: int = 0
+    _acceptOptionalArguements: bool = False
 
     __aliases__: List[str] = []
     __description__: str = "No description provided."
@@ -34,6 +34,16 @@ class CommandBase(ABC):
     def on_client_receive(self, serverHandler: "Connect") -> None:
         pass
 
+    def _required_args(self, function: Callable) -> int:
+        return len(
+            [
+                p
+                for p in inspect.signature(function).parameters.values()
+                if p.default == inspect.Parameter.empty
+                and p.kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)
+            ]
+        )
+
 
 def loadCommand() -> tuple[Type[CommandBase]]:
     commands = []
@@ -53,15 +63,10 @@ def loadCommand() -> tuple[Type[CommandBase]]:
                 attributes._clientInteraction = True
 
             attributes._generatorFunction = inspect.isgeneratorfunction(attributes.on_client_receive)
-            attributes._requiredArguments = len(
-                [
-                    p
-                    for p in inspect.signature(attributes.execute).parameters.values()
-                    if p.default == inspect.Parameter.empty
-                    and p.kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)
-                ]
+            attributes._acceptOptionalArguements = any(
+                p.kind == inspect.Parameter.VAR_POSITIONAL for p in inspect.signature(attributes().execute).parameters.values()
             )
 
-            commands.append(attributes)
+            commands.append(attributes())
 
     return tuple(commands)

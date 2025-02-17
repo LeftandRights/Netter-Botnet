@@ -16,9 +16,9 @@ class screenshotCommand(CommandBase):
     __extra__ = "Usage: `screenshot <Client ID>` | The screenshot will be saved to `client` directory"
 
     def execute(self, netServer: "NetterServer", *args) -> "NetterClient":
-        if not args and not netServer.selectedClient:
-            netServer.inputHandler.handle("help screenshot")  # Sends usage information of this command
-            return
+        # if not args and not netServer.selectedClient:
+        #     netServer.inputHandler.handle("help screenshot")  # Sends usage information of this command
+        #     return
 
         client: "NetterClient" = netServer.selectedClient if netServer.selectedClient is not None else netServer.get(UUID=args[0])
 
@@ -26,7 +26,6 @@ class screenshotCommand(CommandBase):
             netServer.console_log("Provided clinet does not exists.", level="ERROR")
             return
 
-        client.socket_.send_(packetType=PacketType.COMMAND, data="screenshot")
         return client
 
     def on_server_receive(self, netServer: "NetterServer", client: "NetterClient", packet: "ClientResponse") -> None:

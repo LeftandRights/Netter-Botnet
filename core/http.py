@@ -22,17 +22,21 @@ class ClientWrapper:
         self.responseFunction: callable | None = None
 
     def send_(self, packetType: PacketType, data: bytes | str) -> None:
-        if isinstance(data, str):
-            data = data.encode("utf-8")
+        try:
+            if isinstance(data, str):
+                data = data.encode("utf-8")
 
-        packet_length: int = len(data).to_bytes(4, "big")
-        packet_type: int = packetType.value.to_bytes(2, "little")
+            packet_length: int = len(data).to_bytes(4, "big")
+            packet_type: int = packetType.value.to_bytes(2, "little")
 
-        self.socket.send(packet_length)
-        self.socket.send(packet_type)
+            self.socket.send(packet_length)
+            self.socket.send(packet_type)
 
-        for chunk in range(0, len(data), self.BYTES_CHUNK):
-            self.socket.sendall(data[chunk : chunk + self.BYTES_CHUNK])
+            for chunk in range(0, len(data), self.BYTES_CHUNK):
+                self.socket.sendall(data[chunk : chunk + self.BYTES_CHUNK])
+
+        except ConnectionResetError:
+            return
 
     def receive(self) -> ClientResponse:
         try:

@@ -1,5 +1,6 @@
 import typing
 from .commands import loadCommand
+from .enums import PacketType
 
 if typing.TYPE_CHECKING:
     from logger import Logging
@@ -14,18 +15,36 @@ class InputHandler:
             return
 
         for command in loadCommand():
-            if userCommand not in getattr(command, "__aliases__", []):
+            if userCommand not in command.__aliases__:
                 continue
 
-            returnValue = (calledCommand := command()).execute(self.logging.netServer, *(user_input.split()[1:] or []))
+            args = []
+
+            # self.logging.console_log(f"Command info for '{userCommand}':")
+            # self.logging.console_log(f"  L Args required: {command._required_args(command.execute) - 1}", "PLAIN")
+            # self.logging.console_log(f"  L Has vargs: {command._acceptOptionalArguements}", "PLAIN")
+
+            if command._acceptOptionalArguements:
+                args = user_input.split()[1:]
+
+            elif len(user_input.split()[1:]) >= (r_args := command._required_args(command.execute) - 1):
+                args = user_input.split()[1 : r_args + 1]
+
+            else:
+                self.handle("help " + userCommand)
+                break
+
+            # self.logging.console_log("Given arguments [%s] : %s" % (len(args), ", ".join(args)))
+            returnValue = command.execute(self.logging.netServer, *args)
+
+            if command._clientInteraction and returnValue is not None:
+                returnValue.socket_.send_(packetType=PacketType.COMMAND, data=userCommand)
+                returnValue.socket_.responseFunction = command.on_server_receive
+
             break
 
         else:
             self.on_command_not_found(userCommand)
-            return
-
-        if calledCommand._clientInteraction and returnValue is not None:
-            returnValue.socket_.responseFunction = calledCommand.on_server_receive
 
     def on_command_not_found(self, command: str) -> None:
         self.logging.console_log('The command "%s" not found' % command, level="ERROR")

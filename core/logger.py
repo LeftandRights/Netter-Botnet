@@ -103,7 +103,7 @@ class Logging:
             user_input = self.input()
 
             if user_input.startswith("msg "):
-                for client in self.netServer.connectionList:
+                for client in self.netServer.connection_list:
                     client.socket_.send_(PacketType.UNKNOWN, user_input.encode("UTF-8"))
 
             if user_input.lower() == "exit":

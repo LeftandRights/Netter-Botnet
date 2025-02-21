@@ -1,8 +1,9 @@
 import socket, pyngrok
 import pyngrok.ngrok
 
-import hashlib, pickle, threading
+import hashlib, pickle
 from typing import Optional
+
 from time import sleep as _sleep
 
 from .rentry import Rentry
@@ -15,16 +16,23 @@ from .bucket import ConnectionBucket
 class ClientWrapper:
     BYTES_CHUNK: int = 2048
 
-    def __init__(self, socket_: socket.socket, netServer: Optional["NetterServer"] = None) -> None:
+    def __init__(self, socket_: socket.socket, netServer: Optional["NetterServer"] = None, netClient=None) -> None:
         self.socket = socket_
         self.netServer: "NetterServer" = netServer
+        self.netClient = netClient
 
         self.responseFunction: callable | None = None
+        self.sending_state = False
+        self.receiving_state = False
 
-    def send_(self, packetType: PacketType, data: bytes | str) -> None:
+    def send_(self, packetType: PacketType, data: bytes | str | tuple) -> None:
+        while self.sending_state:
+            _sleep(0.1)
+
+        self.sending_state = True
+
         try:
-            if isinstance(data, str):
-                data = data.encode("utf-8")
+            data = pickle.dumps(data)
 
             packet_length: int = len(data).to_bytes(4, "big")
             packet_type: int = packetType.value.to_bytes(2, "little")
@@ -35,18 +43,21 @@ class ClientWrapper:
             for chunk in range(0, len(data), self.BYTES_CHUNK):
                 self.socket.sendall(data[chunk : chunk + self.BYTES_CHUNK])
 
+            self.sending_state = False
         except ConnectionResetError:
             return
 
     def receive(self) -> ClientResponse:
+        while self.receiving_state:
+            _sleep(0.1)
+
+        self.receiving_state = True
+
         try:
             packetLength: int = int.from_bytes(self.socket.recv(4), "big")
 
         except ConnectionResetError:
             return ClientResponse(PacketType.UNKNOWN, None)
-
-        if self.netServer:
-            self.netServer.console_log("Receiving packet with the length of " + str(packetLength))
 
         packet_type: int = int.from_bytes(self.socket.recv(2), "little")
         data, total_received = bytearray(), 0
@@ -61,12 +72,14 @@ class ClientWrapper:
             total_received += len(chunk)
 
         _consoles = [PacketType.CONSOLE_INFO, PacketType.CONSOLE_ERROR, PacketType.CONSOLE_WARNING]
+        data = pickle.loads(data)
+        self.receiving_state = False
 
         if packet_type in _consoles and self.netServer:
-            self.netServer.console_log(data.decode("utf-8"), level=PacketType._value2member_map_[packet_type].name[8:])
+            self.netServer.console_log(data, level=PacketType._value2member_map_[packet_type].name[8:])
             return len(data)
 
-        return ClientResponse(PacketType._value2member_map_.get(packet_type, PacketType.UNKNOWN), bytes(data))
+        return ClientResponse(PacketType._value2member_map_.get(packet_type, PacketType.UNKNOWN), data)
 
 
 class NetterServer(Logging, ConnectionBucket):
@@ -162,6 +175,15 @@ class NetterServer(Logging, ConnectionBucket):
                         _deviceInformation["Public_IP"],
                         _deviceInformation["Local_IP"],
                     )
+
+                    clientSocket.netClient = device
+                    exception = ["Username", "Public_IP", "Local_IP", "MAC_Address"]
+
+                    for attributes in _deviceInformation.items():
+                        if attributes[0] in exception:
+                            continue
+
+                        setattr(device, attributes[0], attributes[1])
 
                     self.append(device)
                     ClientHandler(clientSocket, device, self).start()

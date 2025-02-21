@@ -24,11 +24,11 @@ class runCommand(CommandBase):
             netServer.inputHandler.handle("help select")
             return
 
-        netServer.selectedClient.socket_.send_(packetType=PacketType.COMMAND, data="exec " + " ".join(args))
-        return netServer.selectedClient
+        # netServer.selectedClient.socket_.send_(packetType=PacketType.COMMAND, data="exec " + " ".join(args))
+        return netServer.selectedClient, *args
 
     def on_server_receive(self, netServer: "NetterServer", client: "NetterClient", packet: "ClientResponse"):
-        output: list[str] = packet.data.decode("UTF-8").split("\n")
+        output: list[str] = packet.data.split("\n")
 
         netServer.console_log("Command execution completed, output: ", level="INFO")
 
@@ -38,6 +38,8 @@ class runCommand(CommandBase):
     def on_client_receive(self, serverHandler: "Connect", *args):
         import concurrent.futures, subprocess
 
+        print("Given args on `on_client_receive`: ", *args)
+
         if not args:
             serverHandler.send_(PacketType.CONSOLE_ERROR, repr(serverHandler))
             serverHandler.send_(PacketType.CONSOLE_ERROR, "Invalid usage of command: " + repr(args))
@@ -45,7 +47,6 @@ class runCommand(CommandBase):
 
         def run() -> str:
             output = subprocess.run(" ".join(args), stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, text=True)
-
             return output.stderr if output.stderr else output.stdout
 
         executor = concurrent.futures.ThreadPoolExecutor()
@@ -53,7 +54,7 @@ class runCommand(CommandBase):
 
         try:
             result = future.result(timeout=8)
-            return result
+            yield result
 
         except concurrent.futures.TimeoutError:
             serverHandler.send_(PacketType.CONSOLE_ERROR, "Command execution timed out")

@@ -24,6 +24,9 @@ class ClientHandler(threading.Thread):
         self.socketClient.socket.close()
         self.netServer.connection_list.remove(self.netClient)
 
+        if self.netServer.selectedClient is None:
+            return
+
         if self.netServer.selectedClient.UUID == self.netClient.UUID:
             self.netServer.console_log("Selected client has left the server. No one is selected now.", level="INFO")
             self.netServer.selectedClient = None
@@ -36,7 +39,7 @@ class ClientHandler(threading.Thread):
                 self.disconnect()
 
             if isinstance(response, int):
-                # If the `receive()` function retruns an integer, it means the packet that
+                # If the `receive()` function returns an integer, it means the packet that
                 # are being sent is involving with console stdout, no need to handle.
                 continue
 

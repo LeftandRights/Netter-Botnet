@@ -19,6 +19,7 @@ class infoCommand(CommandBase):
             return
 
         selectedClient = netServer.selectedClient if netServer.selectedClient else netServer.get(UUID=args[0])
+        # netServer.console_log(selectedClient.testing)
 
         if selectedClient is None:
             netServer.console_log("Provided client does not exist.", level="ERROR")
@@ -30,4 +31,4 @@ class infoCommand(CommandBase):
 
         for obj, val in objectList.items():
             spaceCount = max(list(map(len, list(objectList.keys())))) + 5
-            netServer.console_log("     ↳ %s%s-     %s" % (obj, " " * (spaceCount - len(obj)), repr(val)), level="PLAIN")
+            netServer.console_log("     ↳ %s%s-     %s" % (obj, " " * (spaceCount - len(obj)), repr(val).strip("'")), level="PLAIN")

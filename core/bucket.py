@@ -4,6 +4,7 @@ if typing.TYPE_CHECKING:
     from .enums import PacketType
     from .http import NetterServer, NetterClient
 
+
 class ConnectionBucket:
     __connection: list["NetterServer"] = list()
 
@@ -32,5 +33,4 @@ class ConnectionBucket:
 
         return client
 
-    def remove(self, client: typing.Optional["NetterClient"] = None, **key) -> bool:
-        ...
+    def remove(self, client: typing.Optional["NetterClient"] = None, **key) -> bool: ...

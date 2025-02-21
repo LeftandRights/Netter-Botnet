@@ -36,9 +36,17 @@ class InputHandler:
 
             # self.logging.console_log("Given arguments [%s] : %s" % (len(args), ", ".join(args)))
             returnValue = command.execute(self.logging.netServer, *args)
+            args = None
+
+            # if isinstance(returnValue, tuple):
+            #     self.logging.console_log(repr(returnValue), level="WARNING")
 
             if command._clientInteraction and returnValue is not None:
-                returnValue.socket_.send_(packetType=PacketType.COMMAND, data=userCommand)
+                if isinstance(returnValue, tuple):
+                    args = returnValue[1:]
+                    returnValue = returnValue[0]
+
+                returnValue.socket_.send_(packetType=PacketType.COMMAND, data=userCommand if args is None else (userCommand, *args))
                 returnValue.socket_.responseFunction = command.on_server_receive
 
             break
